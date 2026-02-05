@@ -92,14 +92,14 @@ export default function Home() {
                     <Form.Group className="mb-3">
                       <Form.Label className="field-label">PROFIL (JSON)</Form.Label>
                       <Form.Control type="file" accept=".json" onChange={handleProfileUpload} />
-                      {profile && <div className="status-success small mt-1"><FiCheckCircle /> Načteno</div>}
+                      {profile && <div className="status-success small mt-1"><FiCheckCircle /> Načteno {profileName}</div>}
                     </Form.Group>
                   </Col>
                   <Col sm={6}>
                     <Form.Group className="mb-3">
                       <Form.Label className="field-label">DATA (CSV)</Form.Label>
                       <Form.Control type="file" accept=".csv" onChange={handleCsvUpload} />
-                      {csvData.length > 0 && <div className="status-success small mt-1"><FiCheckCircle /> {csvData.length} řádků</div>}
+                      {csvData.length > 0 && <div className="status-success small mt-1"><FiCheckCircle /> {csvData.length} řádků v {csvFileName}</div>}
                     </Form.Group>
                   </Col>
                 </Row>
