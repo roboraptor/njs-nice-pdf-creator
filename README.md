@@ -1,5 +1,4 @@
-.
-# 📄 NicePDF Creator
+# 📄 NicePDFCreator
 
 **Moderní generátor PDF reportů z CSV dat pro Jira a vývojové týmy.** Tento projekt umožňuje uživatelům nahrát CSV export (např. z Jiry), definovat vizuální styl a mapování polí pomocí grafického editoru a následně vygenerovat čisté, profesionální PDF dokumenty.
 
@@ -37,6 +36,7 @@
 │   └── fonts/              # TTF fonty pro PDF
 └── styles/
     └── theme.css           # Custom Dark Mode styling
+```
 
 ## 🏁 Jak začít
 1. Instalace
@@ -48,12 +48,14 @@ Bash
 npm install
 # nebo
 yarn install
+```
 
 2. Spuštění vývojového serveru
 Bash
 
 ```text
 npm run dev
+```
 
 Aplikace bude dostupná na http://localhost:3000.
 
@@ -70,8 +72,8 @@ Aplikace bude dostupná na http://localhost:3000.
     Na hlavní stránce nahrajte CSV s daty + váš uložený profil a klikněte na Stáhnout PDF.
 
 ## 📋 Příklad JSON Profilu
-JSON
 
+```JSON
 {
   "meta": {
     "title": "Jira Report",
@@ -87,6 +89,7 @@ JSON
     }
   }
 }
+```
 
 ## 🤝 Přispívání
 
