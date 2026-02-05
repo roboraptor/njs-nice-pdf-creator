@@ -8,6 +8,8 @@ import Papa from 'papaparse';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import MyPdfDocument from '../components/MyPdfDocument';
 
+const AUTOLOAD_DEFAULTS = true;
+
 export default function Home() {
   const [csvData, setCsvData] = useState([]);
   const [profile, setProfile] = useState(null);
@@ -17,16 +19,22 @@ export default function Home() {
   const [profileName, setProfileName] = useState('');
 
   useEffect(() => {
+    if (!AUTOLOAD_DEFAULTS) {
+      setLoadingDefaults(false); // Okamžitě vypneme loading a nic nenačítáme
+      return; 
+    }
     const loadDefaultData = async () => {
       try {
         const profileRes = await fetch('/data/profile1.json');
         if (profileRes.ok) {
           const profileJson = await profileRes.json();
           setProfile(profileJson);
+          setProfileName("profile1.json (výchozí)"); // Nastavíme název pro UI
         }
         const csvRes = await fetch('/data/data.csv');
         if (csvRes.ok) {
           const csvText = await csvRes.text();
+          setCsvFileName("data.csv (výchozí)"); // Nastavíme název pro UI
           Papa.parse(csvText, {
             header: true,
             skipEmptyLines: true,
