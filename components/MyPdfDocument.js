@@ -1,99 +1,83 @@
 import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Font } from '@react-pdf/renderer';
 
-// 1. Registrace fontů s podporou češtiny
+// Registrace fontů (ponecháno beze změny)
 Font.register({
   family: 'SN Pro',
   fonts: [
     { src: '/fonts/SNPro-Regular.ttf' },
     { src: '/fonts/SNPro-Bold.ttf', fontWeight: 'bold' },
-  ],
-});
-
-Font.register({
-  family: 'Roboto',
-  fonts: [
-    { src: '/fonts/Roboto-Regular.ttf' },
-    { src: '/fonts/Roboto-Bold.ttf', fontWeight: 'bold' },
+    { src: '/fonts/SNPro-Regular.ttf', fontStyle: 'italic' }, // Přidej cesty k ttf pokud máš i italiku
   ],
 });
 
 const MyPdfDocument = ({ data, profile }) => {
-  // 2. Definice stylů - přepnuto na SN Pro
+  const s = profile?.styles || {};
+  const global = s.global || {};
+  const types = s.types || {};
+  const h = global.header || {};
+
+  // 1. Dynamické generování stylů z JSONu
   const styles = StyleSheet.create({
     page: {
-      padding: 40,
-      backgroundColor: '#FFFFFF',
-      fontFamily: 'SN Pro', // Aplikujeme registrovaný font
+      padding: global.padding || 40,
+      backgroundColor: global.backgroundColor || '#FFFFFF',
+      fontFamily: global.fontFamily || 'SN Pro',
       color: '#222222',
     },
-    header: {
-      marginBottom: 25,
-      borderBottom: 2,
-      borderBottomColor: profile?.styles?.primaryColor || '#0052CC',
-      paddingBottom: 15,
+    headerWrapper: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'flex-end',
+      marginBottom: h.marginBottom || 20,
+      paddingBottom: h.paddingBottom || 10,
+      borderBottomWidth: h.borderBottomWidth || 0,
+      borderBottomColor: h.borderBottomColor || 'transparent',
     },
-    title: {
-      fontSize: 22,
-      color: profile?.styles?.primaryColor || '#0052CC',
+    headerTitle: {
+      fontSize: h.titleSize || 20,
       fontWeight: 'bold',
-      letterSpacing: -0.5,
+      color: profile?.styles?.types?.title?.color || '#000',
     },
-    metaInfo: {
-      fontSize: 9,
-      color: '#777777',
+    headerSubtitle: {
+      fontSize: h.metaSize || 9,
+      color: h.metaColor || '#666',
+      marginTop: 2,
+    },
+    headerRight: {
+      fontSize: h.metaSize || 9,
+      color: h.metaColor || '#666',
       textAlign: 'right',
     },
-    ticketContainer: {
+    card: {
       marginBottom: 20,
       padding: 12,
-      backgroundColor: '#F9FAFB',
+      backgroundColor: '#F9FAFB', // Můžeš taky vytáhnout do JSONu
       borderRadius: 4,
-      borderLeft: 3,
-      borderLeftColor: profile?.styles?.primaryColor || '#0052CC',
+      borderLeft: global.cardBorderWidth || 0,
+      borderLeftColor: global.cardBorderColor || 'transparent',
     },
-    ticketHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: 8,
-      borderBottom: 1,
-      borderBottomColor: '#EEEEEE',
-      paddingBottom: 4,
-    },
-    ticketId: {
-      fontSize: 11,
-      fontWeight: 'bold',
-      color: profile?.styles?.secondaryColor || '#FF5630',
-    },
-    status: {
-      fontSize: 9,
-      fontWeight: 'bold',
+    cardAnotation: {
+      fontSize: h.cardAnotationSize || 7,
+      color: h.cardAnotationColor || '#999',
       textTransform: 'uppercase',
-      color: '#555555',
     },
-    summary: {
-      fontSize: 14,
-      fontWeight: 'bold',
-      marginBottom: 10,
-      color: '#111111',
-    },
-    section: {
-      marginBottom: 6,
-    },
-    label: {
-      fontSize: 8,
-      color: '#6B7280',
-      textTransform: 'uppercase',
-      marginBottom: 2,
-      fontWeight: 'bold',
-    },
-    value: {
-      fontSize: 10,
-      lineHeight: 1.4,
-    },
+    // Definice stylů pro jednotlivé typy polí
+    title: types.title || { fontSize: 18, fontWeight: 'bold' },
+    subtitle: types.subtitle || { fontSize: 14, color: '#444' },
+    body: types.body || { fontSize: 10, marginTop: 5 },
+    meta: types.meta || { fontSize: 8, color: '#777' },
+ 
+    ...Object.keys(types).reduce((acc, key) => {
+    acc[key] = {
+        fontSize: types[key].fontSize || 10,
+        color: types[key].color || '#000000',
+        fontWeight: types[key].fontWeight || 'normal', // Přidáno pro BOLD
+        marginBottom: types[key].marginBottom || 0,    // Přidáno pro MEZERY
+        };
+        return acc;
+    }, {}),
+
     footer: {
       position: 'absolute',
       bottom: 30,
@@ -109,51 +93,57 @@ const MyPdfDocument = ({ data, profile }) => {
   });
 
   return (
-    <Document title={profile?.meta?.title || "Jira Report"}>
+    <Document title={profile?.meta?.title || "Report"}>
       <Page size="A4" style={styles.page}>
-        {/* Hlavička dokumentu */}
-        <View style={styles.header}>
+        
+        {/* Dynamická hlavička dokumentu */}
+        <View style={styles.headerWrapper}>
+          {/* Levá strana: Title, Project, Author */}
           <View>
-            <Text style={styles.title}>{profile?.meta?.title || "Export Reportu"}</Text>
+            <Text style={styles.headerTitle}>{profile?.meta?.title || "Report"}</Text>
+            {profile?.meta?.project && (
+              <Text style={styles.headerSubtitle}>Projekt: {profile.meta.project}</Text>
+            )}
+            {profile?.meta?.author && (
+              <Text style={styles.headerSubtitle}>Autor: {profile.meta.author}</Text>
+            )}
           </View>
+
+          {/* Pravá strana: Datum */}
           <View>
-            <Text style={styles.metaInfo}>Projekt: {profile?.meta?.project || "Nezadáno"}</Text>
-            <Text style={styles.metaInfo}>
-              Datum: {new Date().toLocaleDateString('cs-CZ')}
+            <Text style={styles.headerRight}>
+              {new Date().toLocaleDateString('cs-CZ')}
             </Text>
           </View>
         </View>
 
-        {/* Výpis tiketů */}
-        {data.map((ticket, index) => (
-          <View key={index} style={styles.ticketContainer} wrap={false}>
-            <View style={styles.ticketHeader}>
-              <Text style={styles.ticketId}>{ticket.TicketID}</Text>
-              <Text style={styles.status}>{ticket.Status} • {ticket.Date}</Text>
-            </View>
-            
-            <Text style={styles.summary}>{ticket.Summary}</Text>
-            
-            <View style={styles.section}>
-              <Text style={styles.label}>{profile?.labels?.Description || 'Popis'}</Text>
-              <Text style={styles.value}>{ticket.Description || '-'}</Text>
-            </View>
-            
-            <View style={styles.section}>
-              <Text style={styles.label}>{profile?.labels?.Solution || 'Řešení'}</Text>
-              <Text style={styles.value}>{ticket.Solution || '-'}</Text>
-            </View>
-
-            <View style={{ marginTop: 4 }}>
-              <Text style={{ fontSize: 9, color: '#444' }}>
-                <Text style={{ fontWeight: 'bold' }}>{profile?.labels?.Assignee || 'Řešitel'}: </Text>
-                {ticket.Assignee}
-              </Text>
-            </View>
+        {/* --- DYNAMICKÝ VÝPIS DAT --- */}
+        {data.map((row, rowIndex) => (
+          <View key={rowIndex} style={styles.card} wrap={false}>
+            {profile.schema.map((field) => {
+              // Zjistíme, jestli máme pro tento typ pole definovaný styl
+              // Pokud pole nemá typ, použijeme 'body'
+              const fieldStyle = styles[field.type] || styles.body;
+              
+              return (
+                <View key={field.id} style={{ marginBottom: 4 }}>
+                  {/* Pokud je to meta nebo body, možná chceme zobrazit i Label */}
+                  {(field.type === 'meta' || field.type === 'body') && (
+                    <Text style={styles.cardAnotation}>
+                      {field.label}
+                    </Text>
+                  )}
+                  
+                  {/* Samotná hodnota z CSV */}
+                  <Text style={fieldStyle}>
+                    {row[field.id] || ''}
+                  </Text>
+                </View>
+              );
+            })}
           </View>
         ))}
 
-        {/* Číslování stránek v patičce */}
         <Text 
           style={styles.footer} 
           render={({ pageNumber, totalPages }) => `Stránka ${pageNumber} z ${totalPages}`} 

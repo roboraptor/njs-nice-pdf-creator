@@ -1,7 +1,9 @@
+//index.js
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import Head from 'next/head';
-import { Container, Row, Col, Card, Button, Form, Table, Alert, Badge, Navbar } from 'react-bootstrap';
-import { FiCheckCircle, FiFileText, FiSettings, FiDownload, FiPlay } from 'react-icons/fi';
+import { Container, Row, Col, Card, Button, Form, Table, Alert, Badge, Nav, Navbar } from 'react-bootstrap';
+import { FiCheckCircle, FiFileText, FiSettings, FiDownload, FiPlay, FiHome, FiMap } from 'react-icons/fi';
 import Papa from 'papaparse';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import MyPdfDocument from '../components/MyPdfDocument';
@@ -11,6 +13,8 @@ export default function Home() {
   const [profile, setProfile] = useState(null);
   const [error, setError] = useState(null);
   const [loadingDefaults, setLoadingDefaults] = useState(true);
+  const [csvFileName, setCsvFileName] = useState('');
+  const [profileName, setProfileName] = useState('');
 
   useEffect(() => {
     const loadDefaultData = async () => {
@@ -73,15 +77,6 @@ export default function Home() {
       <Head>
         <title>NicePDFCreator</title>
       </Head>
-
-      <Navbar className="custom-navbar mb-4">
-        <Container>
-          <Navbar.Brand className="brand-text">
-            Nice<span>PDF</span>Creator
-          </Navbar.Brand>
-          <Badge bg="primary">v1.0</Badge>
-        </Container>
-      </Navbar>
 
       <Container>
         {error && <Alert variant="danger" dismissible onClose={() => setError(null)}>{error}</Alert>}

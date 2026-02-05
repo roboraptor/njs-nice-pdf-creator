@@ -5,15 +5,49 @@
     "project": "L2 Support Development"
   },
   "schema": [
-    { "id": "TicketID", "label": "ID Tiketu", "type": "meta" },
-    { "id": "Status", "label": "Stav", "type": "meta" },
-    { "id": "Summary", "label": "Předmět", "type": "title" },
-    { "id": "Description", "label": "Popis problému", "type": "body" },
-    { "id": "Solution", "label": "Realizované řešení", "type": "body" },
-    { "id": "Assignee", "label": "Zpracovatel", "type": "meta" }
+    {
+      "id": "TicketID",
+      "label": "TicketID",
+      "type": "meta"
+    },
+    {
+      "id": "Summary",
+      "label": "Summary",
+      "type": "title"
+    },
+    {
+      "id": "Description",
+      "label": "Description",
+      "type": "body"
+    },
+    {
+      "id": "Solution",
+      "label": "Solution",
+      "type": "body"
+    },
+    {
+      "id": "KnownErrors",
+      "label": "KnownErrors",
+      "type": "body"
+    },
+    {
+      "id": "Assignee",
+      "label": "Assignee",
+      "type": "meta"
+    },
+    {
+      "id": "Status",
+      "label": "Status",
+      "type": "meta"
+    },
+    {
+      "id": "Date",
+      "label": "Date",
+      "type": "meta"
+    }
   ],
   "styles": {
-"global": {
+    "global": {
       "fontFamily": "SN Pro",
       "backgroundColor": "#FFFFFF",
       "padding": 40,

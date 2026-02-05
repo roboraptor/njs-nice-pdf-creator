@@ -1,0 +1,48 @@
+{
+  "meta": {
+    "title": "Konfigurace pozvánek",
+    "template": "invitation"
+  },
+  "schema": [
+    { "id": "GuestName", "label": "Jméno hosta", "type": "title" },
+    { "id": "EventName", "label": "Název akce", "type": "subtitle" },
+    { "id": "TableNumber", "label": "Stůl č.", "type": "meta" },
+    { "id": "PersonalNote", "label": "Vzkaz", "type": "body" }
+  ],
+  "styles": {
+    "global": {
+      "fontFamily": "SN Pro",
+      "backgroundColor": "#FFFFFF",
+      "padding": 20,
+      "cardBorderColor": "#D4AF37",
+      "cardBorderWidth": 1
+    },
+    "types": {
+      "title": {
+        "fontSize": 24,
+        "color": "#D4AF37",
+        "fontWeight": "bold",
+        "textAlign": "center",
+        "marginBottom": 10
+      },
+      "subtitle": {
+        "fontSize": 14,
+        "color": "#444444",
+        "textAlign": "center",
+        "marginBottom": 15
+      },
+      "meta": {
+        "fontSize": 10,
+        "color": "#999999",
+        "textTransform": "uppercase",
+        "textAlign": "right"
+      },
+      "body": {
+        "fontSize": 12,
+        "color": "#222222",
+        "lineHeight": 1.5,
+        "marginTop": 10
+      }
+    }
+  }
+}

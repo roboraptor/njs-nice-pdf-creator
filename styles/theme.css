@@ -9,9 +9,15 @@
   --accent-green: #238636;
 }
 
-body {
+body, html {
   background-color: var(--app-bg) !important;
   color: var(--text-main) !important;
+}
+
+.main-wrapper {
+  background-color: var(--bg-dark);
+  min-height: 100vh; /* Zajistí, že tmavá barva neskončí v půlce stránky */
+  width: 100%;
 }
 
 /* Navbar */
@@ -29,6 +35,22 @@ body {
 
 .brand-text span {
   color: var(--accent-blue);
+}
+
+.nav-link-custom {
+  color: var(--text-muted) !important;
+  font-weight: 500;
+  transition: color 0.2s ease-in-out;
+  padding: 0.5rem 1rem !important;
+}
+
+.nav-link-custom:hover {
+  color: var(--accent-blue) !important;
+}
+
+/* Pokud chceš zvýraznit aktivní stránku */
+.nav-link-custom.active {
+  color: #fff !important;
 }
 
 /* Karty a sekce */
