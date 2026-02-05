@@ -24,7 +24,7 @@ const Layout = ({ children, pageTitle = "NicePDF" }) => {
                 <Nav className="ms-auto">
                     <Link href="/" passHref legacyBehavior>
                     <Nav.Link className="nav-link-custom">
-                        <FiHome className="me-1" /> Domů
+                        <FiHome className="me-1" /> Generátor
                     </Nav.Link>
                     </Link>
                     <Link href="/mapping" passHref legacyBehavior>

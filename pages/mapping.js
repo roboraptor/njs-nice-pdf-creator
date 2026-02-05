@@ -3,13 +3,23 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Head from 'next/head';
 import { Container, Row, Col, Card, Button, Form, Table, Alert, Badge, Nav, Navbar, Tabs, Tab } from 'react-bootstrap';
-import { FiUpload, FiSave, FiSettings, FiType, FiLayout, FiCheckCircle, FiHome, FiMap } from 'react-icons/fi';
+import { FiUpload, FiSave, FiSettings, FiType, FiLayout, FiCheckCircle, FiHome, FiMap, FiPlay, FiFolder } from 'react-icons/fi';
 import Papa from 'papaparse';
+import MyPdfDocument from '../components/MyPdfDocument';
+import dynamic from 'next/dynamic';
+
+// Tento řádek nahradí standardní import PDFVieweru
+const PDFViewer = dynamic(
+  () => import('@react-pdf/renderer').then((mod) => mod.PDFViewer),
+  { ssr: false }
+);
 
 export default function MappingPage() {
   const [profile, setProfile] = useState(null);
   const [csvHeaders, setCsvHeaders] = useState([]);
   const [activeTab, setActiveTab] = useState('meta');
+  const [csvData, setCsvData] = useState([]);
+  const [showPreview, setShowPreview] = useState(false);
 
   // 1. Načtení výchozího profilu při startu
   useEffect(() => {
@@ -34,10 +44,15 @@ export default function MappingPage() {
       Papa.parse(file, {
         header: true,
         preview: 1,
-        complete: (results) => setCsvHeaders(results.meta.fields || [])
-      });
-    }
-  };
+        complete:(results) => {
+            if (results.data.length > 0) {
+                setCsvHeaders(Object.keys(results.data[0]));
+                setCsvData(results.data); // Uložíme data pro náhled
+            }
+          },
+        });
+        }
+    };
 
     // 1. Funkce pro automatické vygenerování celého schématu z CSV
     const generateSchemaFromCsv = () => {
@@ -109,40 +124,53 @@ export default function MappingPage() {
       </Head>
       
       <Container className="py-4">
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <h2 className="section-title mb-0"><FiSettings /> Konfigurace Profilu</h2>
-          <Button className="btn-generate px-4" onClick={saveProfile}>
-            <FiSave className="me-2" /> Uložit JSON Profil
-          </Button>
-        </div>
-
         <Row className="g-4">
           {/* LEVÁ STRANA: Soubory */}
           <Col lg={4}>
             <Card className="config-card mb-4 shadow-sm">
               <Card.Body>
-                <Card.Title className="field-label mb-3">Vstupní soubory</Card.Title>
+                <Card.Title className="section-title"><FiFolder /> Vstupní soubory</Card.Title>
                 <Form.Group className="mb-3">
                   <Form.Label className="small fw-bold">Aktuální Profil (JSON)</Form.Label>
                   <Form.Control type="file" size="sm" accept=".json" onChange={handleProfileUpload} />
                 </Form.Group>
                 <Form.Group>
-                  <Form.Label className="small fw-bold">Vzorové CSV (pro mapování)</Form.Label>
+                  <Form.Label className="small fw-bold">Vzorové CSV (pro mapování a náhled)</Form.Label>
                   <Form.Control type="file" size="sm" accept=".csv" onChange={handleCsvUpload} />
+                </Form.Group>
+                <hr className="my-4 border-secondary opacity-25" />
+                <Form.Group>
+                    <Form.Label className="small fw-bold">Právě editujete:</Form.Label>
+                <div className="status-info p-3 rounded bg-dark border border-secondary text-light small">
+                    <FiCheckCircle className="text-success me-2" /><strong>{profile.meta.title}</strong>
+                </div>
+                </Form.Group>
+                <Form.Group>
+                <Button
+                  variant="outline-info" 
+                  disabled={csvData.length === 0 || !profile}
+                  onClick={() => setShowPreview(!showPreview)}
+             >
+                <FiPlay className="me-2" /> {showPreview ? 'Zavřít náhled' : 'Zobrazit náhled'}
+                </Button>
+                </Form.Group>
+                <hr className="my-4 border-secondary opacity-25" />
+                <Form.Group>
+                <Button className="btn-generate px-4" onClick={saveProfile}>
+              <     FiSave className="me-2" /> Uložit JSON Profil
+                </Button>
                 </Form.Group>
               </Card.Body>
             </Card>
 
-            <div className="status-info p-3 rounded bg-dark border border-secondary text-light small">
-              <FiCheckCircle className="text-success me-2" /> 
-              Právě editujete: <strong>{profile.meta.title}</strong>
-            </div>
+            
           </Col>
 
           {/* PRAVÁ STRANA: Editor */}
           <Col lg={8}>
             <Card className="config-card shadow-sm border-0">
               <Card.Body>
+              <Card.Title className="section-title"><FiSettings /> Konfigurace Profilu</Card.Title>
                 <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k)} className="custom-tabs mb-4">
                   
                   {/* TAB 1: ZÁKLADNÍ INFO A HLAVIČKA */}
@@ -385,6 +413,22 @@ export default function MappingPage() {
             </Card>
           </Col>
         </Row>
+
+
+        <Row>
+          {/* Samotné okno s náhledem */}
+            {showPreview && csvData.length > 0 && profile && (
+              <Card className="mt-3 border-0 shadow-lg">
+                <Card.Body className="p-0" style={{ height: '600px' }}>
+                  <PDFViewer width="100%" height="100%" style={{ borderRadius: '8px', border: 'none' }}>
+                    <MyPdfDocument data={csvData} profile={profile} />
+                  </PDFViewer>
+                </Card.Body>
+              </Card>
+            )}
+
+        </Row>
+
       </Container>
     </div>
   );

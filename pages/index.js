@@ -3,10 +3,17 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Head from 'next/head';
 import { Container, Row, Col, Card, Button, Form, Table, Alert, Badge, Nav, Navbar } from 'react-bootstrap';
-import { FiCheckCircle, FiFileText, FiSettings, FiDownload, FiPlay, FiHome, FiMap } from 'react-icons/fi';
+import { FiCheckCircle, FiFileText, FiSettings, FiDownload, FiPlay, FiHome, FiMap, FiFolder } from 'react-icons/fi';
 import Papa from 'papaparse';
-import { PDFDownloadLink } from '@react-pdf/renderer';
+import { PDFDownloadLink} from '@react-pdf/renderer';
 import MyPdfDocument from '../components/MyPdfDocument';
+import dynamic from 'next/dynamic';
+
+// Tento řádek nahradí standardní import PDFVieweru
+const PDFViewer = dynamic(
+  () => import('@react-pdf/renderer').then((mod) => mod.PDFViewer),
+  { ssr: false }
+);
 
 const AUTOLOAD_DEFAULTS = true;
 
@@ -17,6 +24,7 @@ export default function Home() {
   const [loadingDefaults, setLoadingDefaults] = useState(true);
   const [csvFileName, setCsvFileName] = useState('');
   const [profileName, setProfileName] = useState('');
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     if (!AUTOLOAD_DEFAULTS) {
@@ -94,7 +102,7 @@ export default function Home() {
           <Col md={7}>
             <Card className="config-card h-100 shadow-sm">
               <Card.Body>
-                <Card.Title className="section-title"><FiSettings /> Vstupní soubory</Card.Title>
+                <Card.Title className="section-title"><FiFolder /> Vstupní soubory</Card.Title>
                 <Row>
                   <Col sm={6}>
                     <Form.Group className="mb-3">
@@ -137,10 +145,35 @@ export default function Home() {
                       {loadingDefaults ? 'Načítám výchozí...' : 'Čekám na data a profil'}
                     </Button>
                   )}
+
+                <Button 
+                      variant="outline-info" 
+                      disabled={csvData.length === 0 || !profile}
+                      onClick={() => setShowPreview(!showPreview)}
+                    >
+                      <FiPlay className="me-2" /> {showPreview ? 'Zavřít náhled' : 'Zobrazit náhled'}
+                    </Button>
+
+
+
                 </div>
               </Card.Body>
             </Card>
           </Col>
+        </Row>
+
+        <Row className="g-4 mb-4">
+          {/* Samotné okno s náhledem */}
+            {showPreview && csvData.length > 0 && profile && (
+              <Card className="mt-3 border-0 shadow-lg">
+                <Card.Body className="p-0" style={{ height: '600px' }}>
+                  <PDFViewer width="100%" height="100%" style={{ borderRadius: '8px', border: 'none' }}>
+                    <MyPdfDocument data={csvData} profile={profile} />
+                  </PDFViewer>
+                </Card.Body>
+              </Card>
+            )}
+
         </Row>
 
         {/* DOLNÍ SEKCE: NÁHLED (Full width) */}
