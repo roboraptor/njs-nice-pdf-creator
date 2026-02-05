@@ -1,19 +1,48 @@
 {
   "meta": {
-    "title": "Jira Souhrnný Report",
-    "author": "Automatický Generátor",
-    "project": "L2 Support Development"
+    "title": "Jira Release Report",
+    "author": "Generátor",
+    "project": "L2 Development Support"
   },
   "schema": [
-    { "id": "TicketID", "label": "ID Tiketu", "type": "meta" },
-    { "id": "Status", "label": "Stav", "type": "meta" },
-    { "id": "Summary", "label": "Předmět", "type": "title" },
-    { "id": "Description", "label": "Popis problému", "type": "body" },
-    { "id": "Solution", "label": "Realizované řešení", "type": "body" },
-    { "id": "Assignee", "label": "Zpracovatel", "type": "meta" }
+    {
+      "id": "TicketID",
+      "label": "ID Tiketu",
+      "type": "meta"
+    },
+    {
+      "id": "Status",
+      "label": "Stav",
+      "type": "meta"
+    },
+    {
+      "id": "Summary",
+      "label": "Předmět",
+      "type": "title"
+    },
+    {
+      "id": "Description",
+      "label": "Popis problému",
+      "type": "body"
+    },
+    {
+      "id": "Solution",
+      "label": "Realizované řešení",
+      "type": "body"
+    },
+    {
+      "id": "Assignee",
+      "label": "Zpracovatel",
+      "type": "meta"
+    },
+    {
+      "id": "KnownErrors",
+      "label": "Chyby",
+      "type": "body"
+    }
   ],
   "styles": {
-"global": {
+    "global": {
       "fontFamily": "SN Pro",
       "backgroundColor": "#FFFFFF",
       "padding": 40,
@@ -24,7 +53,7 @@
         "borderBottomColor": "#0052CC",
         "marginBottom": 25,
         "paddingBottom": 10,
-        "titleSize": 22,
+        "titleSize": 20,
         "metaSize": 9,
         "metaColor": "#777777"
       }
