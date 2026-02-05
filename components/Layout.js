@@ -32,6 +32,11 @@ const Layout = ({ children, pageTitle = "NicePDF" }) => {
                         <FiMap className="me-1" /> Editor Profilu
                     </Nav.Link>
                     </Link>
+                    <Link href="/visual-mapping" passHref legacyBehavior>
+                    <Nav.Link className="nav-link-custom">
+                        <FiMap className="me-1" /> Visual Editor
+                    </Nav.Link>
+                    </Link>
                 </Nav>
             </Navbar.Collapse>
           </Container>

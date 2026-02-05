@@ -17,6 +17,19 @@ const MyPdfDocument = ({ data, profile }) => {
   const types = s.types || {};
   const h = global.header || {};
 
+  // Pomocná funkce pro získání dynamického stylu (vlož ji do MyPdfDocument před return)
+  const getDynamicStyle = (field, value, baseStyle) => {
+    if (!field.rules) return baseStyle; // Pokud pravidla nejsou, vrať základní styl
+
+    // Najdeme pravidlo, které odpovídá hodnotě (case-insensitive)
+    const rule = field.rules.find(r => 
+        String(value).toLowerCase() === String(r.matches).toLowerCase()
+    );
+
+    return rule ? { ...baseStyle, ...rule } : baseStyle; // Pokud najdeme, přebijeme barvu/font
+};
+
+
   // 1. Dynamické generování stylů z JSONu
   const styles = StyleSheet.create({
     page: {
@@ -119,29 +132,36 @@ const MyPdfDocument = ({ data, profile }) => {
 
         {/* --- DYNAMICKÝ VÝPIS DAT --- */}
         {data.map((row, rowIndex) => (
-          <View key={rowIndex} style={styles.card} wrap={false}>
+        <View key={rowIndex} style={styles.card} wrap={false}>
+            {/* PŘIDÁNO: Flex wrapper pro cihličky */}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', width: '100%' }}>
             {profile.schema.map((field) => {
-              // Zjistíme, jestli máme pro tento typ pole definovaný styl
-              // Pokud pole nemá typ, použijeme 'body'
-              const fieldStyle = styles[field.type] || styles.body;
-              
-              return (
-                <View key={field.id} style={{ marginBottom: 4 }}>
-                  {/* Pokud je to meta nebo body, možná chceme zobrazit i Label */}
-                  {(field.type === 'meta' || field.type === 'body') && (
+                const fieldStyle = styles[field.type] || styles.body;
+                
+                return (
+                <View 
+                    key={field.id} 
+                    style={{ 
+                    // DYNAMICKÁ ŠÍŘKA: Pokud není v JSONu, dáme 100%
+                    width: field.width || '100%', 
+                    marginBottom: 8,
+                    paddingRight: 5 // Drobná mezera mezi cihličkami
+                    }}
+                >
+                    {(field.type === 'meta' || field.type === 'body') && (
                     <Text style={styles.cardAnotation}>
-                      {field.label}
+                        {field.label}
                     </Text>
-                  )}
-                  
-                  {/* Samotná hodnota z CSV */}
-                  <Text style={fieldStyle}>
-                    {row[field.id] || ''}
-                  </Text>
+                    )}
+                    
+                    <Text style={getDynamicStyle(field, row[field.id], fieldStyle)}>
+                        {row[field.id] || ''}
+                    </Text>
                 </View>
-              );
+                );
             })}
-          </View>
+            </View>
+        </View>
         ))}
 
         <Text 

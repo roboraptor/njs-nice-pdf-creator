@@ -8,37 +8,49 @@
     {
       "id": "TicketID",
       "label": "ID Tiketu",
-      "type": "meta"
+      "type": "meta", 
+      "width": "25%"
     },
     {
       "id": "Status",
       "label": "Stav",
-      "type": "meta"
-    },
-    {
-      "id": "Summary",
-      "label": "Předmět",
-      "type": "title"
-    },
-    {
-      "id": "Description",
-      "label": "Popis problému",
-      "type": "body"
-    },
-    {
-      "id": "Solution",
-      "label": "Realizované řešení",
-      "type": "body"
+      "type": "meta", 
+      "width": "25%",
+      "rules": [
+        { "matches": "Done", "color": "#28a745", "fontWeight": "bold" },
+        { "matches": "In Progress", "color": "#fd7e14" },
+        { "matches": "To Do", "color": "#0052cc" }
+      ]
     },
     {
       "id": "Assignee",
       "label": "Zpracovatel",
-      "type": "meta"
+      "type": "meta", 
+      "width": "25%"
+    },
+    {
+      "id": "Summary",
+      "label": "Předmět",
+      "type": "title", 
+      "width": "100%"
+    },
+    {
+      "id": "Description",
+      "label": "Popis problému",
+      "type": "body", 
+      "width": "100%"
+    },
+    {
+      "id": "Solution",
+      "label": "Realizované řešení",
+      "type": "body", 
+      "width": "100%"
     },
     {
       "id": "KnownErrors",
       "label": "Chyby",
-      "type": "body"
+      "type": "body",
+      "width": "100%"
     }
   ],
   "styles": {

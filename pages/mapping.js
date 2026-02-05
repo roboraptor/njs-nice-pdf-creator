@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Head from 'next/head';
 import { Container, Row, Col, Card, Button, Form, Table, Alert, Badge, Nav, Navbar, Tabs, Tab } from 'react-bootstrap';
-import { FiUpload, FiSave, FiSettings, FiType, FiLayout, FiCheckCircle, FiHome, FiMap, FiPlay, FiFolder } from 'react-icons/fi';
+import { FiUpload, FiSave, FiSettings, FiType, FiLayout, FiCheckCircle, FiHome, FiMap, FiPlay, FiFolder, FiFileText } from 'react-icons/fi';
 import Papa from 'papaparse';
 import MyPdfDocument from '../components/MyPdfDocument';
 import dynamic from 'next/dynamic';
@@ -20,6 +20,8 @@ export default function MappingPage() {
   const [activeTab, setActiveTab] = useState('meta');
   const [csvData, setCsvData] = useState([]);
   const [showPreview, setShowPreview] = useState(false);
+  const [jsonText, setJsonText] = useState("");
+  const [jsonError, setJsonError] = useState(null);
 
   // 1. Načtení výchozího profilu při startu
   useEffect(() => {
@@ -28,6 +30,12 @@ export default function MappingPage() {
       .then(data => setProfile(data))
       .catch(err => console.error("Chyba při načítání profilu:", err));
   }, []);
+
+  useEffect(() => {
+    if (profile) {
+      setJsonText(JSON.stringify(profile, null, 2));
+    }
+  }, [profile]);
 
   const handleProfileUpload = (e) => {
     const file = e.target.files[0];
@@ -105,6 +113,17 @@ export default function MappingPage() {
     }
     current[keys[keys.length - 1]] = value;
     setProfile(newProfile);
+  };
+
+  const handleJsonChange = (val) => {
+    setJsonText(val);
+      try {
+        const parsed = JSON.parse(val);
+        setProfile(parsed);
+        setJsonError(null);
+      } catch (e) {
+        setJsonError("Neplatný formát JSON: " + e.message);
+      }
   };
 
   const saveProfile = () => {
@@ -406,6 +425,39 @@ export default function MappingPage() {
                         + Přidat nový typ stylu
                         </Button>
                     </div>
+                    </Tab>
+
+                    <Tab eventKey="raw" title={<span><FiFileText className="me-1" /> JSON Editor</span>}>
+                        <div className="p-3">
+                            <div className="d-flex justify-content-between align-items-center mb-2">
+                            <Form.Label className="text-muted small mb-0">Přímá editace profilu (pro pokročilé)</Form.Label>
+                            {jsonError ? (
+                                <Badge bg="danger">Chyba v syntaxi</Badge>
+                            ) : (
+                                <Badge bg="success">Validní JSON</Badge>
+                            )}
+                            </div>
+                            
+                            <Form.Control
+                            as="textarea"
+                            value={jsonText}
+                            onChange={(e) => handleJsonChange(e.target.value)}
+                            style={{ 
+                                height: '500px', 
+                                fontFamily: 'monospace', 
+                                fontSize: '13px',
+                                backgroundColor: '#1e1e1e',
+                                color: '#d4d4d4',
+                                border: jsonError ? '1px solid #dc3545' : '1px solid #333'
+                            }}
+                            />
+                            
+                            {jsonError && (
+                            <Alert variant="danger" className="mt-2 py-2 small">
+                                {jsonError}
+                            </Alert>
+                            )}
+                        </div>
                     </Tab>
 
                 </Tabs>
