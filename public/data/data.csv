@@ -1,0 +1,4 @@
+TicketID,Summary,Description,Solution,KnownErrors,Assignee,Status,Date
+JIRA-101,"Chyba při přihlášení","Uživatelé se nemohou přihlásit, pokud mají v hesle speciální znaky. Aplikace spadne s chybou 500.","Opravena validace na backendu (RegEx update). Přidán unit test pro speciální znaky.","Žádné známé chyby.","Jan Novák","Done","2023-10-05"
+JIRA-102,"Export do PDF nefunguje","Tlačítko pro export nereaguje na kliknutí v prohlížeči Safari.","Aktualizována knihovna pro frontendové komponenty. Přidán polyfill pro Safari.","Na starších verzích iOS může být generování pomalejší.","Petr Svoboda","In Progress","2023-10-06"
+JIRA-103,"Změna barvy hlavičky","Klient požaduje změnu modré barvy na firemní zelenou #00FF00.","Upraven CSS soubor styles.css a proměnné v theme.js.","V tmavém režimu (Dark Mode) je zelená příliš jasná, bude potřeba doladit.","Alena Dvořáková","Review","2023-10-07"
