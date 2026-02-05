@@ -1,4 +1,4 @@
-# 📄 NicePDF Creator
+# 📄 NicePDFCreator
 
 **Moderní generátor PDF reportů z CSV dat pro Jira a vývojové týmy.** Tento projekt umožňuje uživatelům nahrát CSV export (např. z Jiry), definovat vizuální styl a mapování polí pomocí grafického editoru a následně vygenerovat čisté, profesionální PDF dokumenty.
 
