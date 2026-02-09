@@ -5,6 +5,7 @@ import Head from 'next/head';
 import { Container, Row, Col, Card, Button, Form, Table, Alert, Badge, Nav, Navbar, Tabs, Tab } from 'react-bootstrap';
 import { FiUpload, FiSave, FiSettings, FiType, FiLayout, FiCheckCircle, FiHome, FiMap, FiPlay, FiFolder, FiFileText } from 'react-icons/fi';
 import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 import MyPdfDocument from '../components/MyPdfDocument';
 import dynamic from 'next/dynamic';
 
@@ -46,24 +47,47 @@ export default function MappingPage() {
     }
   };
 
-  const handleCsvUpload = (e) => {
+  const handleExcelOrCsvUpload = (e) => {
     const file = e.target.files[0];
-    if (file) {
+    if (!file) return;
+
+    const fileName = file.name.toLowerCase();
+
+    if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+      // LOGIKA PRO EXCEL
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const data = new Uint8Array(event.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        
+        // Vezmeme první list (sheet) v Excelu
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        
+        // Převedeme na JSON (formát pole objektů, stejně jako u PapaParse)
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        
+        if (jsonData.length > 0) {
+          setCsvHeaders(Object.keys(jsonData[0])); //
+          setCsvData(jsonData); //
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      // PŮVODNÍ LOGIKA PRO CSV (PapaParse)
       Papa.parse(file, {
         header: true,
-        preview: 1,
-        complete:(results) => {
-            if (results.data.length > 0) {
-                setCsvHeaders(Object.keys(results.data[0]));
-                setCsvData(results.data); // Uložíme data pro náhled
-            }
-          },
-        });
+        skipEmptyLines: true,
+        complete: (results) => {
+          setCsvHeaders(Object.keys(results.data[0])); //
+          setCsvData(results.data); //
         }
-    };
+      });
+    }
+  };
 
-    // 1. Funkce pro automatické vygenerování celého schématu z CSV
-    const generateSchemaFromCsv = () => {
+  // 1. Funkce pro automatické vygenerování celého schématu z CSV
+  const generateSchemaFromCsv = () => {
     if (csvHeaders.length === 0) {
         alert("Nejdříve nahrajte vzorové CSV soubor.");
         return;
@@ -80,10 +104,10 @@ export default function MappingPage() {
         ...profile,
         schema: newSchema
     });
-    };
+  };
 
-    // 2. Funkce pro ruční přidání jednoho řádku
-    const addNewField = () => {
+  // 2. Funkce pro ruční přidání jednoho řádku
+  const addNewField = () => {
     const newField = {
         id: `new_field_${profile.schema.length + 1}`,
         label: "Nové pole",
@@ -94,14 +118,14 @@ export default function MappingPage() {
         ...profile,
         schema: [...profile.schema, newField]
     });
-    };
+  };
 
-    // 3. Funkce pro smazání řádku (volitelné, ale užitečné)
-    const removeField = (index) => {
+  // 3. Funkce pro smazání řádku (volitelné, ale užitečné)
+  const removeField = (index) => {
     const newSchema = [...profile.schema];
     newSchema.splice(index, 1);
     setProfile({ ...profile, schema: newSchema });
-    };
+  };
 
   // Pomocná funkce pro aktualizaci hlubokých vnořených polí v JSONu
   const updateProfile = (path, value) => {
@@ -155,7 +179,7 @@ export default function MappingPage() {
                 </Form.Group>
                 <Form.Group>
                   <Form.Label className="small fw-bold">Vzorové CSV (pro mapování a náhled)</Form.Label>
-                  <Form.Control type="file" size="sm" accept=".csv" onChange={handleCsvUpload} />
+                  <Form.Control type="file" size="sm" accept=".csv, .xlsx, .xls" onChange={handleExcelOrCsvUpload} />
                 </Form.Group>
                 <hr className="my-4 border-secondary opacity-25" />
                 <Form.Group>

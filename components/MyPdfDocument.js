@@ -1,13 +1,13 @@
 import React from 'react';
-import { Page, Text, View, Document, StyleSheet, Font } from '@react-pdf/renderer';
+import { Page, Text, View, Document, StyleSheet, Font, Link } from '@react-pdf/renderer';
 
-// Registrace fontů (ponecháno beze změny)
+// Registrace fontů
 Font.register({
   family: 'SN Pro',
   fonts: [
     { src: '/fonts/SNPro-Regular.ttf' },
     { src: '/fonts/SNPro-Bold.ttf', fontWeight: 'bold' },
-    { src: '/fonts/SNPro-Regular.ttf', fontStyle: 'italic' }, // Přidej cesty k ttf pokud máš i italiku
+    { src: '/fonts/SNPro-Regular.ttf', fontStyle: 'italic' },
   ],
 });
 
@@ -17,20 +17,16 @@ const MyPdfDocument = ({ data, profile }) => {
   const types = s.types || {};
   const h = global.header || {};
 
-  // Pomocná funkce pro získání dynamického stylu (vlož ji do MyPdfDocument před return)
+  // Pomocná funkce pro získání dynamického stylu z pravidel (Rules)
   const getDynamicStyle = (field, value, baseStyle) => {
-    if (!field.rules) return baseStyle; // Pokud pravidla nejsou, vrať základní styl
-
-    // Najdeme pravidlo, které odpovídá hodnotě (case-insensitive)
+    if (!field.rules) return baseStyle;
     const rule = field.rules.find(r => 
         String(value).toLowerCase() === String(r.matches).toLowerCase()
     );
+    return rule ? { ...baseStyle, ...rule } : baseStyle;
+  };
 
-    return rule ? { ...baseStyle, ...rule } : baseStyle; // Pokud najdeme, přebijeme barvu/font
-};
-
-
-  // 1. Dynamické generování stylů z JSONu
+  // 1. Definice stylů
   const styles = StyleSheet.create({
     page: {
       padding: global.padding || 40,
@@ -63,9 +59,9 @@ const MyPdfDocument = ({ data, profile }) => {
       textAlign: 'right',
     },
     card: {
-      marginBottom: 20,
+      marginBottom: 12, // Sníženo pro kompaktnější vzhled
       padding: 12,
-      backgroundColor: '#F9FAFB', // Můžeš taky vytáhnout do JSONu
+      backgroundColor: '#F9FAFB',
       borderRadius: 4,
       borderLeft: global.cardBorderWidth || 0,
       borderLeftColor: global.cardBorderColor || 'transparent',
@@ -74,21 +70,23 @@ const MyPdfDocument = ({ data, profile }) => {
       fontSize: h.cardAnotationSize || 7,
       color: h.cardAnotationColor || '#999',
       textTransform: 'uppercase',
+      marginBottom: 2,
     },
-    // Definice stylů pro jednotlivé typy polí
+    // Základní styly pro typy
     title: types.title || { fontSize: 18, fontWeight: 'bold' },
     subtitle: types.subtitle || { fontSize: 14, color: '#444' },
-    body: types.body || { fontSize: 10, marginTop: 5 },
+    body: types.body || { fontSize: 10 },
     meta: types.meta || { fontSize: 8, color: '#777' },
- 
+
+    // Generování dynamických stylů z profilu
     ...Object.keys(types).reduce((acc, key) => {
-    acc[key] = {
+      acc[key] = {
         fontSize: types[key].fontSize || 10,
         color: types[key].color || '#000000',
-        fontWeight: types[key].fontWeight || 'normal', // Přidáno pro BOLD
-        marginBottom: types[key].marginBottom || 0,    // Přidáno pro MEZERY
-        };
-        return acc;
+        fontWeight: types[key].fontWeight || 'normal',
+        marginBottom: types[key].marginBottom || 0,
+      };
+      return acc;
     }, {}),
 
     footer: {
@@ -109,9 +107,8 @@ const MyPdfDocument = ({ data, profile }) => {
     <Document title={profile?.meta?.title || "Report"}>
       <Page size="A4" style={styles.page}>
         
-        {/* Dynamická hlavička dokumentu */}
+        {/* HLAVIČKA DOKUMENTU */}
         <View style={styles.headerWrapper}>
-          {/* Levá strana: Title, Project, Author */}
           <View>
             <Text style={styles.headerTitle}>{profile?.meta?.title || "Report"}</Text>
             {profile?.meta?.project && (
@@ -121,8 +118,6 @@ const MyPdfDocument = ({ data, profile }) => {
               <Text style={styles.headerSubtitle}>Autor: {profile.meta.author}</Text>
             )}
           </View>
-
-          {/* Pravá strana: Datum */}
           <View>
             <Text style={styles.headerRight}>
               {new Date().toLocaleDateString('cs-CZ')}
@@ -130,38 +125,71 @@ const MyPdfDocument = ({ data, profile }) => {
           </View>
         </View>
 
-        {/* --- DYNAMICKÝ VÝPIS DAT --- */}
+        {/* VÝPIS DAT (KARTY) */}
         {data.map((row, rowIndex) => (
-        <View key={rowIndex} style={styles.card} wrap={false}>
-            {/* PŘIDÁNO: Flex wrapper pro cihličky */}
+          <View key={rowIndex} style={styles.card} wrap={false}>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', width: '100%' }}>
-            {profile.schema.map((field) => {
+              {profile.schema.map((field) => {
+                const value = row[field.id] || '';
                 const fieldStyle = styles[field.type] || styles.body;
                 
+                // 1. Čištění a ořezávání textu
+                const processedText = value ? (() => {
+                  const cleaned = String(value)
+                    .replace(/^\s*\*\s*$/gm, '') // Odstraní řádky kde je jen hvězdička
+                    .replace(/\n\s*\n/g, '\n')   // Odstraní prázdné řádky
+                    .trim();
+                  
+                  const lines = cleaned.split('\n');
+                  if (lines.length > 20) {
+                    return lines.slice(0, 20).join('\n') + '\n... (zkráceno)';
+                  }
+                  return cleaned;
+                })() : '';
+
+                // 2. Skládání linku pokud existuje šablona v JSONu
+                const finalLink = field.link && value 
+                  ? field.link.replace("${}", String(value)) 
+                  : null;
+
+                // 3. Dynamický styl (podmíněné formátování)
+                const dynamicStyle = getDynamicStyle(field, value, fieldStyle);
+
                 return (
-                <View 
+                  <View 
                     key={field.id} 
                     style={{ 
-                    // DYNAMICKÁ ŠÍŘKA: Pokud není v JSONu, dáme 100%
-                    width: field.width || '100%', 
-                    marginBottom: 8,
-                    paddingRight: 5 // Drobná mezera mezi cihličkami
+                      width: field.width || '100%', 
+                      marginBottom: 6,
+                      paddingRight: 8,
+                      // Vizuální limit výšky pouze pro pole typu 'body'
+                      ...(field.type === 'body' && { maxHeight: 200, overflow: 'hidden' })
                     }}
-                >
+                  >
                     {(field.type === 'meta' || field.type === 'body') && (
-                    <Text style={styles.cardAnotation}>
-                        {field.label}
-                    </Text>
+                      <Text style={styles.cardAnotation}>{field.label}</Text>
                     )}
                     
-                    <Text style={getDynamicStyle(field, row[field.id], fieldStyle)}>
-                        {row[field.id] || ''}
-                    </Text>
-                </View>
+                    {finalLink ? (
+                      <Link src={finalLink} style={{ textDecoration: 'none' }}>
+                        <Text style={{ 
+                          ...dynamicStyle, 
+                          color: '#0052cc', 
+                          textDecoration: 'underline' 
+                        }}>
+                          {processedText}
+                        </Text>
+                      </Link>
+                    ) : (
+                      <Text style={dynamicStyle}>
+                        {processedText}
+                      </Text>
+                    )}
+                  </View>
                 );
-            })}
+              })}
             </View>
-        </View>
+          </View>
         ))}
 
         <Text 

@@ -5,6 +5,7 @@ import Head from 'next/head';
 import { Container, Row, Col, Card, Button, Form, Table, Alert, Badge, Nav, Navbar } from 'react-bootstrap';
 import { FiCheckCircle, FiFileText, FiSettings, FiDownload, FiPlay, FiHome, FiMap, FiFolder } from 'react-icons/fi';
 import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
 import { PDFDownloadLink} from '@react-pdf/renderer';
 import MyPdfDocument from '../components/MyPdfDocument';
 import dynamic from 'next/dynamic';
@@ -58,15 +59,41 @@ export default function Home() {
     loadDefaultData();
   }, []);
 
-  const handleCsvUpload = (e) => {
+  const handleExcelOrCsvUpload = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setCsvFileName(file.name);
+    if (!file) return;
+
+    const fileName = file.name.toLowerCase();
+
+    if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+      // LOGIKA PRO EXCEL
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const data = new Uint8Array(event.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        
+        // Vezmeme první list (sheet) v Excelu
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        
+        // Převedeme na JSON (formát pole objektů, stejně jako u PapaParse)
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        
+        if (jsonData.length > 0) {
+          setCsvHeaders(Object.keys(jsonData[0])); //
+          setCsvData(jsonData); //
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      // PŮVODNÍ LOGIKA PRO CSV (PapaParse)
       Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
-        complete: (results) => { setCsvData(results.data); setError(null); },
-        error: (err) => setError("Chyba CSV: " + err.message)
+        complete: (results) => {
+          setCsvHeaders(Object.keys(results.data[0])); //
+          setCsvData(results.data); //
+        }
       });
     }
   };
@@ -114,7 +141,7 @@ export default function Home() {
                   <Col sm={6}>
                     <Form.Group className="mb-3">
                       <Form.Label className="field-label">DATA (CSV)</Form.Label>
-                      <Form.Control type="file" accept=".csv" onChange={handleCsvUpload} />
+                      <Form.Control type="file" size="sm" accept=".csv, .xlsx, .xls" onChange={handleExcelOrCsvUpload} />
                       {csvData.length > 0 && <div className="status-success small mt-1"><FiCheckCircle /> {csvData.length} řádků v {csvFileName}</div>}
                     </Form.Group>
                   </Col>
