@@ -1,0 +1,106 @@
+{
+  "meta": {
+    "title": "Jira Sprint Release Report",
+    "author": "Generátor",
+    "project": "L2 Development Support"
+  },
+  "schema": [
+    {
+      "id": "Issue key",
+      "label": "ID Tiketu",
+      "type": "meta",
+      "width": "25%",
+      "link": "https://jira.gpe.cz/browse/${}"
+    },
+    {
+      "id": "Status",
+      "label": "Stav",
+      "type": "meta",
+      "width": "25%",
+      "rules": [
+        {
+          "matches": "Closed",
+          "color": "#28a745",
+          "fontWeight": "bold"
+        },
+        {
+          "matches": "In Progress",
+          "color": "#fd7e14"
+        },
+        {
+          "matches": "To Do",
+          "color": "#0052cc"
+        }
+      ]
+    },
+    {
+      "id": "Assignee",
+      "label": "Zpracovatel",
+      "type": "meta",
+      "width": "25%"
+    },
+    {
+      "id": "Summary",
+      "label": "Předmět",
+      "type": "title",
+      "width": "100%"
+    },
+    {
+      "id": "Description",
+      "label": "Popis problému",
+      "type": "body",
+      "width": "100%"
+    },
+    {
+      "id": "Custom field (Solution)",
+      "label": "Realizované řešení",
+      "type": "body",
+      "width": "100%"
+    },
+    {
+      "id": "Custom field (Possible Errors)",
+      "label": "Chyby",
+      "type": "body",
+      "width": "100%"
+    }
+  ],
+  "styles": {
+    "global": {
+      "fontFamily": "SN Pro",
+      "backgroundColor": "#FFFFFF",
+      "padding": 40,
+      "cardBorderWidth": 3,
+      "cardBorderColor": "#0052CC",
+      "header": {
+        "borderBottomWidth": 2,
+        "borderBottomColor": "#0052CC",
+        "marginBottom": 25,
+        "paddingBottom": 8,
+        "titleSize": 20,
+        "metaSize": 9,
+        "metaColor": "#777777"
+      }
+    },
+    "types": {
+      "title": {
+        "fontSize": 15,
+        "color": "#172B4D",
+        "fontWeight": "bold",
+        "marginBottom": 8
+      },
+      "meta": {
+        "fontSize": 9,
+        "color": "#0052CC",
+        "fontWeight": "bold",
+        "textTransform": "uppercase"
+      },
+      "body": {
+        "fontSize": 9,
+        "color": "#172B4D",
+        "lineHeight": 1.4,
+        "marginTop": 6,
+        "marginBottom": 4
+      }
+    }
+  }
+}
