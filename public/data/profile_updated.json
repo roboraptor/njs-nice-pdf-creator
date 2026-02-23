@@ -1,20 +1,20 @@
 {
   "meta": {
     "title": "Jira Sprint Release Report",
-    "author": "Generátor",
+    "author": "Generator",
     "project": "L2 Development Support"
   },
   "schema": [
     {
       "id": "Issue key",
-      "label": "ID Tiketu",
+      "label": "Issue key",
       "type": "meta",
       "width": "25%",
       "link": "https://jira.gpe.cz/browse/${}"
     },
     {
       "id": "Status",
-      "label": "Stav",
+      "label": "Status",
       "type": "meta",
       "width": "25%",
       "rules": [
@@ -25,18 +25,28 @@
         },
         {
           "matches": "In Progress",
-          "color": "#fd7e14"
+          "color": "#fd7e14",
+          "hide": true
         },
         {
           "matches": "To Do",
-          "color": "#0052cc"
+          "color": "#0052cc",
+          "hide": true
         }
       ]
     },
     {
       "id": "Assignee",
-      "label": "Zpracovatel",
+      "label": "Assignee",
       "type": "meta",
+      "width": "25%"
+    },
+    {
+      "id": "Requestor_Extracted",
+      "label": "Requestor",
+      "type": "meta",
+      "sourceField": "Description", 
+      "regex": "Owner\\/Requestor\\*\\s*\\n\\s*(.*)",
       "width": "25%"
     },
     {
@@ -46,20 +56,22 @@
       "width": "100%"
     },
     {
-      "id": "Description",
-      "label": "Popis problému",
+      "id": "AcceptanceCriteria_Extracted",
+      "label": "Acceptance Criteria",
       "type": "body",
+      "sourceField": "Description", 
+      "regex": "Criteria:\\*\\s*\\n\\s*(.*)",
       "width": "100%"
     },
     {
       "id": "Custom field (Solution)",
-      "label": "Realizované řešení",
+      "label": "Solution",
       "type": "body",
       "width": "100%"
     },
     {
       "id": "Custom field (Possible Errors)",
-      "label": "Chyby",
+      "label": "Possible Errors",
       "type": "body",
       "width": "100%"
     }

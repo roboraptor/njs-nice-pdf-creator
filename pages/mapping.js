@@ -1,15 +1,12 @@
-//mapping.js
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import Head from 'next/head';
-import { Container, Row, Col, Card, Button, Form, Table, Alert, Badge, Nav, Navbar, Tabs, Tab } from 'react-bootstrap';
-import { FiUpload, FiSave, FiSettings, FiType, FiLayout, FiCheckCircle, FiHome, FiMap, FiPlay, FiFolder, FiFileText } from 'react-icons/fi';
+import { Container, Row, Col, Card, Button, Form, Table, Alert, Badge, Tabs, Tab } from 'react-bootstrap';
+import { FiUpload, FiSave, FiSettings, FiType, FiLayout, FiCheckCircle, FiFolder, FiFileText, FiPlay } from 'react-icons/fi';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import MyPdfDocument from '../components/MyPdfDocument';
 import dynamic from 'next/dynamic';
+import Head from 'next/head';
 
-// Tento řádek nahradí standardní import PDFVieweru
 const PDFViewer = dynamic(
   () => import('@react-pdf/renderer').then((mod) => mod.PDFViewer),
   { ssr: false }
@@ -24,7 +21,6 @@ export default function MappingPage() {
   const [jsonText, setJsonText] = useState("");
   const [jsonError, setJsonError] = useState(null);
 
-  // 1. Načtení výchozího profilu při startu
   useEffect(() => {
     fetch('/data/profile1.json')
       .then(res => res.json())
@@ -38,96 +34,124 @@ export default function MappingPage() {
     }
   }, [profile]);
 
-  const handleProfileUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => setProfile(JSON.parse(event.target.result));
-      reader.readAsText(file);
-    }
+  // --- LOGIKA ZPRACOVÁNÍ DAT (PIPELINE) ---
+
+  const getPdfData = () => {
+    if (!csvData || csvData.length === 0 || !profile) return [];
+
+    // 1. KROK: Načtení dat (už máme v csvData)
+    let processed = [...csvData];
+
+    // 2. KROK: Vyčištění od prázdných řádků (Body 3 tvého postupu)
+    processed = processed.filter(row => 
+      Object.values(row).some(val => val !== null && val !== undefined && val !== "")
+    );
+
+    // 3. KROK: Aplikace Regexů (Body 4 tvého postupu)
+    processed = processed.map(row => {
+      const newRow = { ...row };
+      profile.schema.forEach(field => {
+        if (field.regex && field.sourceField) {
+          const textToSearch = String(row[field.sourceField] || "");
+          try {
+            const regex = new RegExp(field.regex, "m");
+            const match = textToSearch.match(regex);
+            if (match) {
+              newRow[field.id] = match[1] ? match[1].trim() : match[0].trim();
+            } else {
+              newRow[field.id] = ""; // Nenalezeno
+            }
+          } catch (e) {
+            newRow[field.id] = "Regex Error";
+          }
+        }
+      });
+      return newRow;
+    });
+
+    // 4. KROK: Aplikace Rules a Filtrování (Body 5 - včetně funkce HIDE)
+    processed = processed.filter(row => {
+      let shouldHideRow = false;
+
+      profile.schema.forEach(field => {
+        if (field.rules) {
+          field.rules.forEach(rule => {
+            const cellValue = String(row[field.id] || "");
+            
+            // Kontrola shody (matches)
+            if (cellValue === rule.matches) {
+              // Pokud pravidlo říká hide, označíme řádek k smazání
+              if (rule.hide === true) {
+                shouldHideRow = true;
+              }
+              
+              // Zde můžeme aplikovat i barvy/styly pro komponentu MyPdfDocument
+              // Ty se obvykle předávají jako meta-informace v objektu řádku
+              row[`_style_${field.id}`] = {
+                color: rule.color,
+                fontWeight: rule.fontWeight
+              };
+            }
+          });
+        }
+      });
+
+      return !shouldHideRow; // Vrátí true pouze pokud nemá být skryt
+    });
+
+    return processed;
   };
+
+  // --- OBSLUHA SOUBORŮ ---
 
   const handleExcelOrCsvUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const fileName = file.name.toLowerCase();
 
     if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-      // LOGIKA PRO EXCEL
       const reader = new FileReader();
       reader.onload = (event) => {
         const data = new Uint8Array(event.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
-        
-        // Vezmeme první list (sheet) v Excelu
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-        
-        // Převedeme na JSON (formát pole objektů, stejně jako u PapaParse)
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData = XLSX.utils.sheet_to_json(worksheet);
-        
         if (jsonData.length > 0) {
-          setCsvHeaders(Object.keys(jsonData[0])); //
-          setCsvData(jsonData); //
+          setCsvHeaders(Object.keys(jsonData[0]));
+          setCsvData(jsonData);
         }
       };
       reader.readAsArrayBuffer(file);
     } else {
-      // PŮVODNÍ LOGIKA PRO CSV (PapaParse)
       Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
         complete: (results) => {
-          setCsvHeaders(Object.keys(results.data[0])); //
-          setCsvData(results.data); //
+          if (results.data.length > 0) {
+            setCsvHeaders(Object.keys(results.data[0]));
+            setCsvData(results.data);
+          }
         }
       });
     }
   };
 
-  // 1. Funkce pro automatické vygenerování celého schématu z CSV
-  const generateSchemaFromCsv = () => {
-    if (csvHeaders.length === 0) {
-        alert("Nejdříve nahrajte vzorové CSV soubor.");
-        return;
+  // --- POMOCNÉ FUNKCE PRO EDITOR ---
+
+  const handleProfileUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const parsed = JSON.parse(event.target.result);
+          setProfile(parsed);
+        } catch (err) { alert("Chyba v JSONu"); }
+      };
+      reader.readAsText(file);
     }
-
-    // Vytvoříme nové schéma, kde každý sloupec z CSV je jeden řádek
-    const newSchema = csvHeaders.map(header => ({
-        id: header,        // ID bude název sloupce
-        label: header,     // Label bude taky název sloupce (uživatel si ho pak přepíše)
-        type: "body"       // Výchozí typ bude prostý text
-    }));
-
-    setProfile({
-        ...profile,
-        schema: newSchema
-    });
   };
 
-  // 2. Funkce pro ruční přidání jednoho řádku
-  const addNewField = () => {
-    const newField = {
-        id: `new_field_${profile.schema.length + 1}`,
-        label: "Nové pole",
-        type: "body"
-    };
-
-    setProfile({
-        ...profile,
-        schema: [...profile.schema, newField]
-    });
-  };
-
-  // 3. Funkce pro smazání řádku (volitelné, ale užitečné)
-  const removeField = (index) => {
-    const newSchema = [...profile.schema];
-    newSchema.splice(index, 1);
-    setProfile({ ...profile, schema: newSchema });
-  };
-
-  // Pomocná funkce pro aktualizaci hlubokých vnořených polí v JSONu
   const updateProfile = (path, value) => {
     const newProfile = { ...profile };
     const keys = path.split('.');
@@ -141,13 +165,13 @@ export default function MappingPage() {
 
   const handleJsonChange = (val) => {
     setJsonText(val);
-      try {
-        const parsed = JSON.parse(val);
-        setProfile(parsed);
-        setJsonError(null);
-      } catch (e) {
-        setJsonError("Neplatný formát JSON: " + e.message);
-      }
+    try {
+      const parsed = JSON.parse(val);
+      setProfile(parsed);
+      setJsonError(null);
+    } catch (e) {
+      setJsonError("Neplatný formát JSON: " + e.message);
+    }
   };
 
   const saveProfile = () => {
@@ -158,8 +182,30 @@ export default function MappingPage() {
     downloadAnchorNode.click();
   };
 
+  const generateSchemaFromCsv = () => {
+    if (csvHeaders.length === 0) return;
+    const newSchema = csvHeaders.map(header => ({
+        id: header,
+        label: header,
+        type: "body"
+    }));
+    setProfile({ ...profile, schema: newSchema });
+  };
+
+  const addNewField = () => {
+    const newField = { id: `new_${Date.now()}`, label: "Nové pole", type: "body" };
+    setProfile({ ...profile, schema: [...profile.schema, newField] });
+  };
+
+  const removeField = (index) => {
+    const newSchema = [...profile.schema];
+    newSchema.splice(index, 1);
+    setProfile({ ...profile, schema: newSchema });
+  };
+
   if (!profile) return <Container className="py-5 text-center">Načítání konfigurace...</Container>;
 
+  // Ponecháno renderování (return) podle původního zadání
   return (
     <div className="main-wrapper">
       <Head>
@@ -168,7 +214,6 @@ export default function MappingPage() {
       
       <Container className="py-4">
         <Row className="g-4">
-          {/* LEVÁ STRANA: Soubory */}
           <Col lg={4}>
             <Card className="config-card mb-4 shadow-sm">
               <Card.Body>
@@ -182,43 +227,35 @@ export default function MappingPage() {
                   <Form.Control type="file" size="sm" accept=".csv, .xlsx, .xls" onChange={handleExcelOrCsvUpload} />
                 </Form.Group>
                 <hr className="my-4 border-secondary opacity-25" />
-                <Form.Group>
+                <Form.Group className="mb-3">
                     <Form.Label className="small fw-bold">Právě editujete:</Form.Label>
                 <div className="status-info p-3 rounded bg-dark border border-secondary text-light small">
                     <FiCheckCircle className="text-success me-2" /><strong>{profile.meta.title}</strong>
                 </div>
                 </Form.Group>
-                <Form.Group>
+                <Form.Group className="d-grid gap-2">
                 <Button
                   variant="outline-info" 
                   disabled={csvData.length === 0 || !profile}
                   onClick={() => setShowPreview(!showPreview)}
-             >
-                <FiPlay className="me-2" /> {showPreview ? 'Zavřít náhled' : 'Zobrazit náhled'}
+                >
+                  <FiPlay className="me-2" /> {showPreview ? 'Zavřít náhled' : 'Zobrazit náhled'}
                 </Button>
-                </Form.Group>
-                <hr className="my-4 border-secondary opacity-25" />
-                <Form.Group>
                 <Button className="btn-generate px-4" onClick={saveProfile}>
-              <     FiSave className="me-2" /> Uložit JSON Profil
+                  <FiSave className="me-2" /> Uložit JSON Profil
                 </Button>
                 </Form.Group>
               </Card.Body>
             </Card>
-
-            
           </Col>
 
-          {/* PRAVÁ STRANA: Editor */}
           <Col lg={8}>
             <Card className="config-card shadow-sm border-0">
               <Card.Body>
               <Card.Title className="section-title"><FiSettings /> Konfigurace Profilu</Card.Title>
                 <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k)} className="custom-tabs mb-4">
                   
-                  {/* TAB 1: ZÁKLADNÍ INFO A HLAVIČKA */}
                   <Tab eventKey="meta" title={<span><FiType className="me-1" /> Info & Hlavička</span>}>
-                    {/* PRVNÍ ŘÁDEK: Hlavní nadpis */}
                         <Row className="g-3 mb-4">
                         <Col md={6}>
                             <Form.Label className="field-label text-muted small">Název</Form.Label>
@@ -249,7 +286,6 @@ export default function MappingPage() {
 
                         <hr className="my-4 border-secondary opacity-25" />
 
-                        {/* DRUHÝ ŘÁDEK: Doplňující info */}
                         <Row className="g-3">
                         <Col md={4}>
                             <Form.Label className="field-label text-muted small">Projekt</Form.Label>
@@ -283,33 +319,10 @@ export default function MappingPage() {
                             onChange={(e) => updateProfile('styles.global.header.metaSize', parseInt(e.target.value))} 
                             />
                         </Col>
-
-                        <hr className="my-4 border-secondary opacity-25" />
-
-                        </Row>
-                        <Row className="g-3">
-                        <Col md={2}>
-                            <Form.Label className="field-label text-muted small">Anotation text size</Form.Label>
-                            <Form.Control 
-                            type="number"
-                            value={profile.styles.global.header.cardAnotationSize || 7} 
-                            onChange={(e) => updateProfile('styles.global.header.cardAnotationSize', parseInt(e.target.value))} 
-                            />
-                        </Col>
-                        <Col md={2}>
-                            <Form.Label className="field-label text-muted small">Barva anotace</Form.Label>
-                            <Form.Control 
-                            type="color" 
-                            value={profile.styles.global.header.cardAnotationColor || '#999999'} 
-                            onChange={(e) => updateProfile('styles.global.header.cardAnotationColor', e.target.value)} 
-                            />
-                        </Col>
                         </Row>
                   </Tab>
 
-                  {/* TAB 2: MAPOVÁNÍ DAT (SCHEMA) */}
                   <Tab eventKey="schema" title={<span><FiLayout className="me-1" /> Mapování polí</span>}>
-                    
                     <div className="d-flex justify-content-between mb-3">
                         <div className="gap-2 d-flex">
                         <Button variant="outline-primary" size="sm" onClick={addNewField}>
@@ -328,7 +341,7 @@ export default function MappingPage() {
                           <th>Pole v PDF</th>
                           <th>Typ (Styl)</th>
                           <th>Sloupec v CSV</th>
-                          <th>X</th>
+                          <th>Akce</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -355,20 +368,18 @@ export default function MappingPage() {
                               </Form.Select>
                             </td>
                             <td>
-                              <Form.Select size="sm" value={field.id} 
+                              <Form.Select size="sm" value={field.sourceField || field.id} 
                                 onChange={(e) => {
                                   const newSchema = [...profile.schema];
-                                  newSchema[idx].id = e.target.value;
+                                  newSchema[idx].sourceField = e.target.value;
+                                  // Pokud nemáme nastavené ID, použijeme název sloupce
+                                  if(!newSchema[idx].id) newSchema[idx].id = e.target.value;
                                   setProfile({...profile, schema: newSchema});
                                 }}
                               >
                                 <option value="">-- Vyberte sloupec --</option>
                                     {csvHeaders.map(h => <option key={h} value={h}>{h}</option>)}
-                                    {!csvHeaders.includes(field.id) && field.id && (
-                                    <option value={field.id}>{field.id} (aktuální)</option>
-                                    )}
                               </Form.Select>
-                              
                             </td>
                             <td>
                                 <Button variant="outline-danger" size="sm" onClick={() => removeField(idx)}>×</Button>
@@ -379,19 +390,15 @@ export default function MappingPage() {
                     </Table>
                   </Tab>
 
-                  {/* TAB 3: BARVY A STYLY */}
                   <Tab eventKey="styles" title={<span><FiSettings className="me-1" /> Globální styly</span>}>
                     <div className="p-3">
                         {Object.keys(profile.styles.types).map((typeKey, index) => (
                         <div key={typeKey} className="mb-4 p-3 border border-secondary rounded bg-dark shadow-sm">
-                            
-                            {/* 1. ŘÁDEK: Nadpis stylu a smazání */}
                             <Row className="align-items-center mb-3">
                             <Col md={6}>
                                 <h5 className="text-primary mb-0 text-uppercase fw-bold">{typeKey}</h5>
                             </Col>
-                            <Col md={4}></Col> {/* Mezera */}
-                            <Col md={2} className="text-end">
+                            <Col md={6} className="text-end">
                                 <Button 
                                 variant="outline-danger" 
                                 size="sm" 
@@ -400,14 +407,11 @@ export default function MappingPage() {
                                     delete newStyles[typeKey];
                                     updateProfile('styles.types', newStyles);
                                 }}
-                                title="Smazat styl"
                                 >
                                 Smazat
                                 </Button>
                             </Col>
                             </Row>
-
-                            {/* 2. ŘÁDEK: Velikost a Barva */}
                             <Row className="g-3">
                             <Col md={3}>
                                 <Form.Label className="field-label text-muted small">Velikost (px)</Form.Label>
@@ -425,43 +429,30 @@ export default function MappingPage() {
                                 onChange={(e) => updateProfile(`styles.types.${typeKey}.color`, e.target.value)} 
                                 />
                             </Col>
-                            {/* Tady můžeš v budoucnu přidat třeba FontWeight nebo Margin */}
                             </Row>
-
-                            {/* Oddělovač, pokud to není poslední prvek */}
-                            {index < Object.keys(profile.styles.types).length - 1 && (
-                            <hr className="mt-4 border-secondary opacity-25" />
-                            )}
                           </div>
                         ))}
-
-                        {/* Tlačítko pro přidání nového typu stylu (bonus) */}
                         <Button 
                         variant="outline-primary" 
                         className="w-100 mt-2"
                         onClick={() => {
-                            const name = prompt("Zadejte název nového stylu (např. 'note' nebo 'warning'):");
+                            const name = prompt("Zadejte název nového stylu:");
                             if (name) {
-                            updateProfile(`styles.types.${name}`, { fontSize: 10, color: "#000000", fontWeight: "normal" });
+                            updateProfile(`styles.types.${name}`, { fontSize: 10, color: "#000000" });
                             }
                         }}
                         >
                         + Přidat nový typ stylu
                         </Button>
                     </div>
-                    </Tab>
+                  </Tab>
 
-                    <Tab eventKey="raw" title={<span><FiFileText className="me-1" /> JSON Editor</span>}>
+                  <Tab eventKey="raw" title={<span><FiFileText className="me-1" /> JSON Editor</span>}>
                         <div className="p-3">
                             <div className="d-flex justify-content-between align-items-center mb-2">
-                            <Form.Label className="text-muted small mb-0">Přímá editace profilu (pro pokročilé)</Form.Label>
-                            {jsonError ? (
-                                <Badge bg="danger">Chyba v syntaxi</Badge>
-                            ) : (
-                                <Badge bg="success">Validní JSON</Badge>
-                            )}
+                            <Form.Label className="text-muted small mb-0">Přímá editace profilu</Form.Label>
+                            {jsonError ? <Badge bg="danger">Chyba</Badge> : <Badge bg="success">Validní</Badge>}
                             </div>
-                            
                             <Form.Control
                             as="textarea"
                             value={jsonText}
@@ -475,36 +466,26 @@ export default function MappingPage() {
                                 border: jsonError ? '1px solid #dc3545' : '1px solid #333'
                             }}
                             />
-                            
-                            {jsonError && (
-                            <Alert variant="danger" className="mt-2 py-2 small">
-                                {jsonError}
-                            </Alert>
-                            )}
+                            {jsonError && <Alert variant="danger" className="mt-2 py-2 small">{jsonError}</Alert>}
                         </div>
-                    </Tab>
-
+                  </Tab>
                 </Tabs>
               </Card.Body>
             </Card>
           </Col>
         </Row>
 
-
         <Row>
-          {/* Samotné okno s náhledem */}
             {showPreview && csvData.length > 0 && profile && (
-              <Card className="mt-3 border-0 shadow-lg">
-                <Card.Body className="p-0" style={{ height: '600px' }}>
+              <Card className="mt-4 border-0 shadow-lg">
+                <Card.Body className="p-0" style={{ height: '800px' }}>
                   <PDFViewer width="100%" height="100%" style={{ borderRadius: '8px', border: 'none' }}>
-                    <MyPdfDocument data={csvData} profile={profile} />
+                    <MyPdfDocument data={getPdfData()} profile={profile} />
                   </PDFViewer>
                 </Card.Body>
               </Card>
             )}
-
         </Row>
-
       </Container>
     </div>
   );
