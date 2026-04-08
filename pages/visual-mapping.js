@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, Form, Badge, Navbar, Nav } from 'react-bootstrap';
 import { FiMove, FiPlus, FiTrash2, FiSave, FiLayout, FiMaximize2, FiHome } from 'react-icons/fi';
-import Papa from 'papaparse';
 import Link from 'next/link';
 // DND Kit Importy
 import { DndContext, closestCenter, useSensor, useSensors, PointerSensor, DragOverlay } from '@dnd-kit/core';
 import { arrayMove, SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { parseDataFile, parseJsonFile, downloadJsonFile } from '../utils/fileHandlers';
 
 // --- KOMPONENTA PRO JEDNOTLIVÉ POLE V CANVASU ---
 const SortableField = ({ field, idx, onRemove, onChangeWidth }) => {
@@ -54,20 +54,28 @@ export default function VisualMapping() {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   // --- LOGIKA NAHRÁVÁNÍ (Stejná jako v index.js) ---
-  const handleProfileUpload = (e) => {
+  const handleProfileUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
       setProfileName(file.name);
-      const reader = new FileReader();
-      reader.onload = (ev) => setProfile(JSON.parse(ev.target.result));
-      reader.readAsText(file);
+      try {
+        const parsed = await parseJsonFile(file);
+        setProfile(parsed);
+      } catch (err) {
+        console.error("Chyba v JSONu", err);
+      }
     }
   };
 
-  const handleCsvUpload = (e) => {
+  const handleCsvUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      Papa.parse(file, { header: true, complete: (res) => res.data[0] && setCsvHeaders(Object.keys(res.data[0])) });
+      try {
+        const { headers } = await parseDataFile(file);
+        setCsvHeaders(headers);
+      } catch (err) {
+        console.error("Chyba při čtení CSV:", err);
+      }
     }
   };
 
@@ -97,23 +105,7 @@ export default function VisualMapping() {
   };
 
   const saveProfile = () => {
-    if (!profile) return;
-
-    // Převedeme objekt na text s odsazením 2 mezery
-    const jsonString = JSON.stringify(profile, null, 2);
-    const blob = new Blob([jsonString], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    
-    // Vytvoříme dočasný odkaz pro stažení
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = profileName || "custom-profile.json";
-    document.body.appendChild(link);
-    link.click();
-    
-    // Vyčistíme paměť
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    downloadJsonFile(profile, profileName || "custom-profile.json");
   };
 
   return (

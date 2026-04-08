@@ -1,16 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, Form, Table, Alert, Badge, Tabs, Tab } from 'react-bootstrap';
-import { FiUpload, FiSave, FiSettings, FiType, FiLayout, FiCheckCircle, FiFolder, FiFileText, FiPlay } from 'react-icons/fi';
-import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
-import MyPdfDocument from '../components/MyPdfDocument';
-import dynamic from 'next/dynamic';
+import { FiSave, FiSettings, FiType, FiCheckCircle, FiFolder, FiFileText, FiPlay, FiLayout } from 'react-icons/fi';
 import Head from 'next/head';
-
-const PDFViewer = dynamic(
-  () => import('@react-pdf/renderer').then((mod) => mod.PDFViewer),
-  { ssr: false }
-);
+import { processPdfData } from '../utils/dataProcessor';
+import { parseDataFile, parseJsonFile, downloadJsonFile } from '../utils/fileHandlers';
+import PdfPreview from '../components/PdfPreview';
 
 export default function MappingPage() {
   const [profile, setProfile] = useState(null);
@@ -34,121 +28,34 @@ export default function MappingPage() {
     }
   }, [profile]);
 
-  // --- LOGIKA ZPRACOVÁNÍ DAT (PIPELINE) ---
-
-  const getPdfData = () => {
-    if (!csvData || csvData.length === 0 || !profile) return [];
-
-    // 1. KROK: Načtení dat (už máme v csvData)
-    let processed = [...csvData];
-
-    // 2. KROK: Vyčištění od prázdných řádků (Body 3 tvého postupu)
-    processed = processed.filter(row => 
-      Object.values(row).some(val => val !== null && val !== undefined && val !== "")
-    );
-
-    // 3. KROK: Aplikace Regexů (Body 4 tvého postupu)
-    processed = processed.map(row => {
-      const newRow = { ...row };
-      profile.schema.forEach(field => {
-        if (field.regex && field.sourceField) {
-          const textToSearch = String(row[field.sourceField] || "");
-          try {
-            const regex = new RegExp(field.regex, "m");
-            const match = textToSearch.match(regex);
-            if (match) {
-              newRow[field.id] = match[1] ? match[1].trim() : match[0].trim();
-            } else {
-              newRow[field.id] = ""; // Nenalezeno
-            }
-          } catch (e) {
-            newRow[field.id] = "Regex Error";
-          }
-        }
-      });
-      return newRow;
-    });
-
-    // 4. KROK: Aplikace Rules a Filtrování (Body 5 - včetně funkce HIDE)
-    processed = processed.filter(row => {
-      let shouldHideRow = false;
-
-      profile.schema.forEach(field => {
-        if (field.rules) {
-          field.rules.forEach(rule => {
-            const cellValue = String(row[field.id] || "");
-            
-            // Kontrola shody (matches)
-            if (cellValue === rule.matches) {
-              // Pokud pravidlo říká hide, označíme řádek k smazání
-              if (rule.hide === true) {
-                shouldHideRow = true;
-              }
-              
-              // Zde můžeme aplikovat i barvy/styly pro komponentu MyPdfDocument
-              // Ty se obvykle předávají jako meta-informace v objektu řádku
-              row[`_style_${field.id}`] = {
-                color: rule.color,
-                fontWeight: rule.fontWeight
-              };
-            }
-          });
-        }
-      });
-
-      return !shouldHideRow; // Vrátí true pouze pokud nemá být skryt
-    });
-
-    return processed;
-  };
-
   // --- OBSLUHA SOUBORŮ ---
 
-  const handleExcelOrCsvUpload = (e) => {
+  const handleExcelOrCsvUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const fileName = file.name.toLowerCase();
 
-    if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const data = new Uint8Array(event.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
-        if (jsonData.length > 0) {
-          setCsvHeaders(Object.keys(jsonData[0]));
-          setCsvData(jsonData);
-        }
-      };
-      reader.readAsArrayBuffer(file);
-    } else {
-      Papa.parse(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (results) => {
-          if (results.data.length > 0) {
-            setCsvHeaders(Object.keys(results.data[0]));
-            setCsvData(results.data);
-          }
-        }
-      });
+    try {
+      const { data, headers } = await parseDataFile(file);
+      if (data.length > 0) {
+        setCsvHeaders(headers);
+        setCsvData(data);
+      }
+    } catch (err) {
+      console.error("Chyba při čtení dat:", err);
     }
   };
 
   // --- POMOCNÉ FUNKCE PRO EDITOR ---
 
-  const handleProfileUpload = (e) => {
+  const handleProfileUpload = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const parsed = JSON.parse(event.target.result);
-          setProfile(parsed);
-        } catch (err) { alert("Chyba v JSONu"); }
-      };
-      reader.readAsText(file);
+    if (!file) return;
+
+    try {
+      const parsed = await parseJsonFile(file);
+      setProfile(parsed);
+    } catch (err) {
+      alert("Chyba v JSONu");
     }
   };
 
@@ -175,11 +82,7 @@ export default function MappingPage() {
   };
 
   const saveProfile = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(profile, null, 2));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", `${profile.meta.template || 'profile'}_updated.json`);
-    downloadAnchorNode.click();
+    downloadJsonFile(profile, `${profile.meta.title || 'profile'}_updated.json`);
   };
 
   const generateSchemaFromCsv = () => {
@@ -478,10 +381,8 @@ export default function MappingPage() {
         <Row>
             {showPreview && csvData.length > 0 && profile && (
               <Card className="mt-4 border-0 shadow-lg">
-                <Card.Body className="p-0" style={{ height: '800px' }}>
-                  <PDFViewer width="100%" height="100%" style={{ borderRadius: '8px', border: 'none' }}>
-                    <MyPdfDocument data={getPdfData()} profile={profile} />
-                  </PDFViewer>
+                <Card.Body className="p-0">
+                  <PdfPreview data={processPdfData(csvData, profile)} profile={profile} height="800px" />
                 </Card.Body>
               </Card>
             )}

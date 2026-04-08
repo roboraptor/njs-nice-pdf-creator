@@ -4,17 +4,12 @@ import Head from 'next/head';
 import { Container, Row, Col, Card, Button, Form, Table, Alert, Badge, Nav, Navbar } from 'react-bootstrap';
 import { FiCheckCircle, FiFileText, FiSettings, FiDownload, FiPlay, FiHome, FiMap, FiFolder } from 'react-icons/fi';
 import Papa from 'papaparse';
-import * as XLSX from 'xlsx';
 import { PDFDownloadLink} from '@react-pdf/renderer';
 import MyPdfDocument from '../components/MyPdfDocument';
-import dynamic from 'next/dynamic';
 // Importujeme tvou novou logiku
 import { processPdfData } from '../utils/dataProcessor';
-
-const PDFViewer = dynamic(
-  () => import('@react-pdf/renderer').then((mod) => mod.PDFViewer),
-  { ssr: false }
-);
+import { parseDataFile, parseJsonFile } from '../utils/fileHandlers';
+import PdfPreview from '../components/PdfPreview';
 
 const AUTOLOAD_DEFAULTS = false;
 
@@ -63,52 +58,31 @@ export default function Home() {
     loadDefaultData();
   }, []);
 
-  const handleExcelOrCsvUpload = (e) => {
+  const handleExcelOrCsvUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    const fileName = file.name.toLowerCase();
     setCsvFileName(file.name); // Nastavíme název souboru pro UI
 
-    if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const data = new Uint8Array(event.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
-        
-        if (jsonData.length > 0) {
-          // OPRAVENO: Odstraněno volání setCsvHeaders
-          setCsvData(jsonData); 
-        }
-      };
-      reader.readAsArrayBuffer(file);
-    } else {
-      Papa.parse(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (results) => {
-          // OPRAVENO: Odstraněno volání setCsvHeaders
-          setCsvData(results.data); 
-        }
-      });
+    try {
+      const { data } = await parseDataFile(file);
+      if (data.length > 0) {
+        setCsvData(data); 
+      }
+    } catch (err) {
+      console.error("Chyba při čtení dat:", err);
     }
   };
 
-  const handleProfileUpload = (e) => {
+  const handleProfileUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
       setProfileName(file.name);
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          setProfile(JSON.parse(event.target.result));
-          setError(null);
-        } catch (err) { setError("Neplatný profil."); }
-      };
-      reader.readAsText(file);
+      try {
+        const parsed = await parseJsonFile(file);
+        setProfile(parsed);
+        setError(null);
+      } catch (err) { setError("Neplatný profil."); }
     }
   };
 
@@ -187,10 +161,8 @@ export default function Home() {
         <Row className="g-4 mb-4">
             {showPreview && isReady && (
               <Card className="mt-3 border-0 shadow-lg">
-                <Card.Body className="p-0" style={{ height: '600px' }}>
-                  <PDFViewer width="100%" height="100%" style={{ borderRadius: '8px', border: 'none' }}>
-                    <MyPdfDocument data={processedData} profile={profile} />
-                  </PDFViewer>
+                <Card.Body className="p-0">
+                  <PdfPreview data={processedData} profile={profile} height="600px" />
                 </Card.Body>
               </Card>
             )}
