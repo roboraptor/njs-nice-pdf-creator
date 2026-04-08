@@ -2,6 +2,8 @@
 
 **Moderní generátor PDF reportů z CSV dat pro Jira a vývojové týmy.** Tento projekt umožňuje uživatelům nahrát CSV export (např. z Jiry), definovat vizuální styl a mapování polí pomocí grafického editoru a následně vygenerovat čisté, profesionální PDF dokumenty.
 
+<img width="1347" height="513" alt="image" src="https://github.com/user-attachments/assets/958b287e-20aa-4c61-baaf-2c2fc0b072ed" />
+
 ---
 
 ## 🚀 Hlavní Funkce
